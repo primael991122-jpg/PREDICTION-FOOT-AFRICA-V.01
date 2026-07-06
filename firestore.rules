@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true) ||
+        (request.auth.token != null && 'email' in request.auth.token && request.auth.token.email != null &&
+         request.auth.token.get('email_verified', false) == true &&
+         (request.auth.token.email.lower() == 'admin@predictionfootafrica.com' ||
+          request.auth.token.email.lower() == 'test@admin.com' ||
+          request.auth.token.email.lower() == 'anguiley99@gmail.com'))
+      );
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+
+    match /users/{userId} {
+      // Users can see other users for the leaderboard
+      allow read: if isSignedIn();
+      // Only the user can write their own profile, with check to prevent self-assigned admin rights
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        request.resource.data.get('isAdmin', false) == false ||
+        (request.auth.token != null && 'email' in request.auth.token && request.auth.token.email != null &&
+         request.auth.token.get('email_verified', false) == true &&
+         (request.auth.token.email.lower() == 'admin@predictionfootafrica.com' ||
+          request.auth.token.email.lower() == 'test@admin.com' ||
+          request.auth.token.email.lower() == 'anguiley99@gmail.com'))
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (request.auth.uid == userId && 
+         request.resource.data.get('isAdmin', false) == resource.data.get('isAdmin', false))
+      );
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /predictions/{predictionId} {
+      // Everyone can read predictions to calculate points for leaderboard
+      allow read: if isSignedIn();
+      // Users can only write their own predictions, points are locked to prevent leaderboard spoofing
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && (
+        !('points' in request.resource.data) || request.resource.data.get('points', null) == null
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (request.resource.data.userId == request.auth.uid && (
+          !('points' in request.resource.data) || request.resource.data.get('points', null) == resource.data.get('points', null)
+        ))
+      );
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /rules/{ruleId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /info/{infoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /forum/{msgId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.user.id == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    match /contact/{msgId} {
+      allow read: if isSignedIn() && (resource.data.user.id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.user.id == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /settings/config {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

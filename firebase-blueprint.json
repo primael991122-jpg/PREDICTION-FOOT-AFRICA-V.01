@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with personal information and role.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shortId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "profilePictureUrl": { "type": "string" },
+        "country": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "code": { "type": "string" }
+          }
+        },
+        "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
+        "phone": { "type": "string" },
+        "isAdmin": { "type": "boolean" },
+        "lastLogin": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "isAdmin"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Football match information.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "betNumber": { "type": "integer" },
+        "homeTeam": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "flagUrl": { "type": "string" }
+          }
+        },
+        "awayTeam": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "flagUrl": { "type": "string" }
+          }
+        },
+        "date": { "type": "string" },
+        "competition": { "type": "string" },
+        "result": {
+          "type": "object",
+          "properties": {
+            "homeScore": { "type": "integer" },
+            "awayScore": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "Prediction": {
+      "title": "Prediction",
+      "description": "User's prediction for a match.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "matchId": { "type": "string" },
+        "prediction": { "type": "string" },
+        "points": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "matches/{matchId}": {
+      "schema": "Match",
+      "description": "Football matches."
+    },
+    "predictions/{predictionId}": {
+      "schema": "Prediction",
+      "description": "User predictions."
+    },
+    "rules/{ruleId}": {
+      "schema": "object",
+      "description": "Application rules."
+    },
+    "info/{infoId}": {
+      "schema": "object",
+      "description": "General information."
+    },
+    "ads/{adId}": {
+      "schema": "object",
+      "description": "Advertisements."
+    },
+    "forum/{msgId}": {
+      "schema": "object",
+      "description": "Forum messages."
+    },
+    "contact/{msgId}": {
+      "schema": "object",
+      "description": "Contact messages."
+    },
+    "settings/config": {
+      "schema": "object",
+      "description": "Application settings."
+    }
+  }
+}
