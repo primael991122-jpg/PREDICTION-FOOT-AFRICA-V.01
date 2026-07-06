@@ -16,7 +16,6 @@ import { auth, db } from './firebaseConfig';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import type { User, Match } from './types';
-import { BottomNav } from './components/common/BottomNav';
 import { useNotifications } from './hooks/useNotifications';
 import { NotificationToast } from './components/common/NotificationToast';
 import { NotificationHub } from './components/common/NotificationHub';
@@ -186,7 +185,6 @@ const App: React.FC = () => {
   const renderPage = () => {
     if (!currentUser) return <AuthView onLogin={handleLogin} />;
     
-    const hasBottomNav = [Page.DASHBOARD, Page.PREDICTIONS, Page.LEADERBOARD, Page.FORUM].includes(currentPage);
     let content = null;
 
     switch (currentPage) {
@@ -260,8 +258,7 @@ const App: React.FC = () => {
 
     return (
       <div className="flex flex-col min-h-screen">
-        <div className={`flex-grow ${hasBottomNav ? 'pb-20' : ''}`}>{content}</div>
-        {hasBottomNav && <BottomNav currentPage={currentPage} navigate={navigate} />}
+        <div className="flex-grow">{content}</div>
         
         {/* Toast alerts overlay for real-time notifications */}
         <NotificationToast 
