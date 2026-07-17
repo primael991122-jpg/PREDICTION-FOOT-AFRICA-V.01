@@ -200,6 +200,9 @@ const App: React.FC = () => {
             onUpdateUser={handleUpdateUser}
             onOpenNotifications={() => setIsNotificationsHubOpen(true)}
             unreadNotificationsCount={unreadCount}
+            predictions={predictions}
+            matches={matches}
+            leaderboard={leaderboard}
           />
         ); 
         break;
@@ -231,6 +234,9 @@ const App: React.FC = () => {
             settings={settings} 
             onOpenNotifications={() => setIsNotificationsHubOpen(true)}
             unreadNotificationsCount={unreadCount}
+            predictions={predictions}
+            matches={matches}
+            leaderboard={leaderboard}
           />
         ); 
         break;
@@ -252,6 +258,9 @@ const App: React.FC = () => {
             onUpdateUser={handleUpdateUser} 
             onOpenNotifications={() => setIsNotificationsHubOpen(true)}
             unreadNotificationsCount={unreadCount}
+            predictions={predictions}
+            matches={matches}
+            leaderboard={leaderboard}
           />
         );
     }

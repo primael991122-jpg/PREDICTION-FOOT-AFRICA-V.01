@@ -1,6 +1,6 @@
 
-import React, { useState, useRef } from 'react';
-import type { User, Ad, AppSettings } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import type { User, Ad, AppSettings, Prediction, Match, LeaderboardEntry } from '../types';
 import { Page } from '../App';
 import { ArrowLeftOnRectangleIcon, ChartBarIcon, ClipboardDocumentListIcon, QuestionMarkCircleIcon, ChatBubbleLeftRightIcon, InformationCircleIcon, UserGroupIcon, CameraIcon, XMarkIcon, ShieldCheckIcon, GlobeAltIcon, BellAlertIcon } from '@heroicons/react/24/outline';
 import { AdCarousel } from './common/AdCarousel';
@@ -25,6 +25,9 @@ interface DashboardProps {
   };
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
+  predictions?: Prediction[];
+  matches?: Match[];
+  leaderboard?: LeaderboardEntry[];
 }
 
 interface MenuItem {
@@ -46,7 +49,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onUpdateUser, 
   notificationCounts,
   onOpenNotifications,
-  unreadNotificationsCount
+  unreadNotificationsCount,
+  predictions = [],
+  matches = [],
+  leaderboard = []
 }) => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -137,6 +143,72 @@ export const Dashboard: React.FC<DashboardProps> = ({
         setSaving(false);
     }
   };
+
+  // Memoized calculations for User statistics
+  const stats = useMemo(() => {
+    const userPredictions = predictions.filter(p => p.userId === currentUser.id);
+    
+    // An evaluated prediction is one where the match has a result OR points are explicitly set
+    const finishedPredictions = userPredictions.filter(p => {
+      const match = matches.find(m => m.id === p.matchId);
+      return (match && match.result) || (typeof p.points === 'number');
+    });
+
+    const successfulPredictions = finishedPredictions.filter(p => {
+      if (typeof p.points === 'number') {
+        return p.points > 0;
+      }
+      const match = matches.find(m => m.id === p.matchId);
+      if (match && match.result) {
+        let actualResult: '1' | 'X' | '2';
+        const r = match.result;
+        if (r.homeScore > r.awayScore) actualResult = '1';
+        else if (r.homeScore < r.awayScore) actualResult = '2';
+        else actualResult = 'X';
+
+        const pred = p.prediction;
+        if (pred === actualResult) return true;
+        if (pred === '1X' && (actualResult === '1' || actualResult === 'X')) return true;
+        if (pred === 'X2' && (actualResult === 'X' || actualResult === '2')) return true;
+      }
+      return false;
+    });
+
+    const successRate = finishedPredictions.length > 0
+      ? Math.round((successfulPredictions.length / finishedPredictions.length) * 100)
+      : 0;
+
+    const leaderboardEntry = leaderboard.find(entry => entry.user.id === currentUser.id);
+    
+    // Total points
+    const totalPoints = leaderboardEntry ? leaderboardEntry.points : finishedPredictions.reduce((acc, p) => {
+      if (typeof p.points === 'number') return acc + p.points;
+      const match = matches.find(m => m.id === p.matchId);
+      if (match && match.result) {
+        let actualResult: '1' | 'X' | '2';
+        const r = match.result;
+        if (r.homeScore > r.awayScore) actualResult = '1';
+        else if (r.homeScore < r.awayScore) actualResult = '2';
+        else actualResult = 'X';
+
+        const pred = p.prediction;
+        if (pred === actualResult) return acc + (actualResult === 'X' ? 2 : 3);
+        if (pred === '1X' && (actualResult === '1' || actualResult === 'X')) return acc + 1;
+        if (pred === 'X2' && (actualResult === 'X' || actualResult === '2')) return acc + 1;
+      }
+      return acc;
+    }, 0);
+
+    const rank = leaderboardEntry ? leaderboardEntry.rank : undefined;
+
+    return {
+      successRate,
+      totalPoints,
+      rank,
+      evaluatedCount: finishedPredictions.length,
+      successfulCount: successfulPredictions.length
+    };
+  }, [predictions, matches, leaderboard, currentUser.id]);
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col selection:bg-yellow-400 selection:text-black">
@@ -237,10 +309,65 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="mt-8 flex justify-center w-full bg-black/20 rounded-2xl py-4 border border-white/5">
                   <button onClick={() => navigate(Page.LEADERBOARD)} className="flex flex-col items-center px-16 hover:bg-white/5 transition-all">
                       <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">{t('dash.rank')}</span>
-                      <span className="text-xl font-black text-yellow-500">#{currentUser.id ? 'TOP' : '-'}</span>
+                      <span className="text-xl font-black text-yellow-500">
+                          {stats.rank ? `#${stats.rank}` : '#-'}
+                      </span>
                   </button>
               </div>
            </div>
+        </div>
+
+        {/* Mes Statistiques Section */}
+        <div className="w-full max-w-lg bg-gray-900/40 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-6 mb-8 border border-white/10 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-yellow-500/5 to-transparent pointer-events-none"></div>
+          
+          <h3 className="text-sm font-black text-yellow-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <ChartBarIcon className="w-5 h-5" />
+            {t('dash.stats_title')}
+          </h3>
+          
+          <div className="grid grid-cols-3 gap-4">
+            {/* Taux de Réussite */}
+            <div className="bg-black/20 rounded-2xl p-4 border border-white/5 flex flex-col items-center text-center justify-between">
+              <span className="text-[9px] text-gray-500 uppercase font-black tracking-wider mb-2 leading-tight">
+                {t('dash.success_rate')}
+              </span>
+              <div className="relative flex items-center justify-center my-1">
+                <span className="text-2xl font-black text-emerald-400">
+                  {stats.successRate}%
+                </span>
+              </div>
+              <span className="text-[9px] text-gray-400 font-bold mt-1">
+                {stats.successfulCount}/{stats.evaluatedCount}
+              </span>
+            </div>
+
+            {/* Points Totaux */}
+            <div className="bg-black/20 rounded-2xl p-4 border border-white/5 flex flex-col items-center text-center justify-between">
+              <span className="text-[9px] text-gray-500 uppercase font-black tracking-wider mb-2 leading-tight">
+                {t('dash.total_points')}
+              </span>
+              <span className="text-2xl font-black text-yellow-500 my-1">
+                {stats.totalPoints}
+              </span>
+              <span className="text-[9px] text-gray-400 font-bold mt-1">
+                {t('dash.points')}
+              </span>
+            </div>
+
+            {/* Classement Historique */}
+            <div className="bg-black/20 rounded-2xl p-4 border border-white/5 flex flex-col items-center text-center justify-between">
+              <span className="text-[9px] text-gray-500 uppercase font-black tracking-wider mb-2 leading-tight">
+                {t('dash.historical_rank')}
+              </span>
+              <span className="text-2xl font-black text-blue-400 my-1">
+                {stats.rank ? `#${stats.rank}` : '#-'}
+              </span>
+              <span className="text-[9px] text-gray-400 font-bold mt-1">
+                sur {leaderboard?.length || 0}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 w-full max-w-lg">
