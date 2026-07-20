@@ -12,7 +12,7 @@ import { About } from './components/About';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { useAppData } from './hooks/useAppData'; 
-import { auth, db } from './firebaseConfig';
+import { auth, db, isFirebaseConfigured } from './firebaseConfig';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import type { User, Match } from './types';
@@ -25,6 +25,38 @@ export enum Page {
 }
 
 const App: React.FC = () => {
+  if (!isFirebaseConfigured) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-white selection:bg-yellow-400 selection:text-black">
+        <div className="w-full max-w-md bg-gray-900 border border-yellow-500/20 rounded-[2rem] p-8 shadow-2xl text-center">
+          <div className="w-16 h-16 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <h1 className="text-xl font-black text-white uppercase tracking-wider mb-2">Configuration requise</h1>
+          <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+            Pour faire fonctionner l'application sur Netlify, vous devez configurer vos variables d'environnement Firebase dans les paramètres de votre site.
+          </p>
+          
+          <div className="bg-black/30 rounded-2xl p-4 text-left border border-white/5 space-y-2 mb-6">
+            <p className="text-[10px] font-black uppercase text-yellow-500 tracking-wider">Variables à ajouter :</p>
+            <ul className="font-mono text-xs text-gray-300 space-y-1">
+              <li>• VITE_FIREBASE_API_KEY</li>
+              <li>• VITE_FIREBASE_AUTH_DOMAIN</li>
+              <li>• VITE_FIREBASE_PROJECT_ID</li>
+              <li>• VITE_FIREBASE_STORAGE_BUCKET</li>
+              <li>• VITE_FIREBASE_MESSAGING_SENDER_ID</li>
+              <li>• VITE_FIREBASE_APP_ID</li>
+            </ul>
+          </div>
+
+          <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black">
+            Prediction Foot Africa
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const [currentPage, setCurrentPage] = useState<Page>(Page.AUTH);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
